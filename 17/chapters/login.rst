@@ -19,17 +19,17 @@ Before you can begin to play around with Django's authentication offering, you'l
 Within the ``settings.py`` file find the ``INSTALLED_APPS`` tuple and check that ``django.contrib.auth`` and ``django.contrib.contenttypes`` are listed, so that it looks like the code below:
 
 .. code-block:: python
-	
+
 	INSTALLED_APPS = (
 		'django.contrib.admin',
-	    'django.contrib.auth', 
+	    'django.contrib.auth',
 	    'django.contrib.sessions',
 	    'django.contrib.messages',
 	    'django.contrib.staticfiles',
 	    'rango',
 	)
 
-While ``django.contrib.auth`` provides Django with access to the authentication system, ``django.contrib.contenttypes`` is used by the authentication application to track models installed in your database. 
+While ``django.contrib.auth`` provides Django with access to the authentication system, ``django.contrib.contenttypes`` is used by the authentication application to track models installed in your database.
 
 .. note:: Remember, if you had to add the ``auth`` applications to your ``INSTALLED_APPS`` tuple, you will need to update your database with the ``$ python manage.py migrate`` command.
 
@@ -57,10 +57,10 @@ Django will use the first hasher in ``PASSWORD_HASHERS`` i.e. settings.PASSWORD_
     	'django.contrib.auth.hashers.PBKDF2PasswordHasher',
     	'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
 	)
-	
-	
+
+
 However, to get up and running you don't need to explicitly specify the ``PASSWORD_HASHERS``, in which case Django defaults to, ``django.contrib.auth.hashers.PBKDF2PasswordHasher``.
-	
+
 
 
 The ``User`` Model
@@ -79,7 +79,7 @@ The model also comes with other attributes such as ``is_active`` (which determin
 
 Additional User Attributes
 --------------------------
-If you would like to include other attributes than what is provided by the ``User`` model, then you will needed to create a model that is associated with the the ``User`` model. For our Rango application, we want to include two more additional attributes for each user account. Specifically, we wish to include:
+If you would like to include other attributes than what is provided by the ``User`` model, then you will need to create a model that is associated with the the ``User`` model. For our Rango application, we want to include two more additional attributes for each user account. Specifically, we wish to include:
 
 - a ``URLField``, allowing a user of Rango to specify their own website; and
 - a ``ImageField``, which allows users to specify a picture for their user profile.
@@ -87,15 +87,15 @@ If you would like to include other attributes than what is provided by the ``Use
 This can be achieved by creating an additional model in Rango's ``models.py`` file. Let's add a new model called ``UserProfile``:
 
 .. code-block:: python
-	
+
 	class UserProfile(models.Model):
 	    # This line is required. Links UserProfile to a User model instance.
 	    user = models.OneToOneField(User)
-	    
+
 	    # The additional attributes we wish to include.
 	    website = models.URLField(blank=True)
 	    picture = models.ImageField(upload_to='profile_images', blank=True)
-	    
+
 	    # Override the __unicode__() method to return out something meaningful!
 	    def __unicode__(self):
 	        return self.user.username
@@ -103,9 +103,9 @@ This can be achieved by creating an additional model in Rango's ``models.py`` fi
 Note that we reference the ``User`` model using a One to One relationship. Since we reference the default ``User`` model, we need to import it within the ``models.py`` file:
 
 .. code-block:: python
-	
+
 	from django.contrib.auth.models import User
-	
+
 
 It may have been tempting to add these additional fields by inheriting from the ``User`` model directly. However, because other applications may also want access to the ``User`` model, then it not recommended to use inheritance, but instead use the one-to-one relationship.
 
@@ -122,7 +122,7 @@ With our ``UserProfile`` model defined, we now edit Rango's ``admin.py`` file to
 .. code-block:: python
 
 	from rango.models import UserProfile
-	
+
 	admin.site.register(UserProfile)
 
 
@@ -152,10 +152,10 @@ In ``rango/forms.py``, we now need to create two classes inheriting from ``forms
 In ``rango/forms.py``, let's create our two classes which inherit from ``forms.ModelForm``. Add the following code to the module.
 
 .. code-block:: python
-	
+
 	class UserForm(forms.ModelForm):
 	    password = forms.CharField(widget=forms.PasswordInput())
-	    
+
 	    class Meta:
 	        model = User
 	        fields = ('username', 'email', 'password')
@@ -175,8 +175,8 @@ You'll also notice that ``UserForm`` includes a definition of the ``password`` a
 Finally, remember to include the required classes at the top of the ``forms.py`` module!
 
 .. code-block:: python
-	
-	
+
+
 	from django import forms
 	from django.contrib.auth.models import User
 	from rango.models import Category, Page, UserProfile
@@ -186,61 +186,61 @@ Creating the ``register()`` View
 Next we need to handle both the rendering of the form, and the processing of form input data. Within Rango's ``views.py`` file, add the following view function:
 
 .. code-block:: python
-	
+
 	from rango.forms import UserForm, UserProfileForm
-	
+
 	def register(request):
-	    
+
 	    # A boolean value for telling the template whether the registration was successful.
 	    # Set to False initially. Code changes value to True when registration succeeds.
 	    registered = False
-	    
+
 	    # If it's a HTTP POST, we're interested in processing form data.
 	    if request.method == 'POST':
 	        # Attempt to grab information from the raw form information.
 	        # Note that we make use of both UserForm and UserProfileForm.
 	        user_form = UserForm(data=request.POST)
 	        profile_form = UserProfileForm(data=request.POST)
-	        
+
 	        # If the two forms are valid...
 	        if user_form.is_valid() and profile_form.is_valid():
 	            # Save the user's form data to the database.
 	            user = user_form.save()
-	            
+
 	            # Now we hash the password with the set_password method.
 	            # Once hashed, we can update the user object.
 	            user.set_password(user.password)
 	            user.save()
-	            
+
 	            # Now sort out the UserProfile instance.
 	            # Since we need to set the user attribute ourselves, we set commit=False.
 	            # This delays saving the model until we're ready to avoid integrity problems.
 	            profile = profile_form.save(commit=False)
 	            profile.user = user
-	            
+
 	            # Did the user provide a profile picture?
 	            # If so, we need to get it from the input form and put it in the UserProfile model.
 	            if 'picture' in request.FILES:
 	                profile.picture = request.FILES['picture']
-	            
+
 	            # Now we save the UserProfile model instance.
 	            profile.save()
-	            
+
 	            # Update our variable to tell the template registration was successful.
 	            registered = True
-	        
+
 	        # Invalid form or forms - mistakes or something else?
 	        # Print problems to the terminal.
 	        # They'll also be shown to the user.
 	        else:
 	            print user_form.errors, profile_form.errors
-	    
+
 	    # Not a HTTP POST, so we render our form using two ModelForm instances.
 	    # These forms will be blank, ready for user input.
 	    else:
 	        user_form = UserForm()
 	        profile_form = UserProfileForm()
-	    
+
 	    # Render the template depending on the context.
 	    return render(request,
 	            'rango/register.html',
@@ -256,7 +256,7 @@ Creating the *Registration* Template
 Now create a new template file, ``rango/register.html`` and add the following code:
 
 .. code-block:: html
-	
+
 	<!DOCTYPE html>
 	<html>
 	    <head>
@@ -276,13 +276,13 @@ Now create a new template file, ``rango/register.html`` and add the following co
 	                enctype="multipart/form-data">
 
 	            {% csrf_token %}
-	            
+
 	            <!-- Display each form. The as_p method wraps each element in a paragraph
 	                 (<p>) element. This ensures each element appears on a new line,
 	                 making everything look neater. -->
 	            {{ user_form.as_p }}
 	            {{ profile_form.as_p }}
-	            
+
 	            <!-- Provide a button to click to submit the form. -->
 	            <input type="submit" name="submit" value="Register" />
 	        </form>
@@ -292,7 +292,7 @@ Now create a new template file, ``rango/register.html`` and add the following co
 
 This HTML template makes use of the ``registered`` variable we used in our view indicating whether registration was successful or not. Note that ``registered`` must be ``False`` in order for the template to display the registration form - otherwise, apart from the title, only a success message is displayed.
 
-.. warning::  
+.. warning::
 	You should be aware of the ``enctype`` attribute for the ``<form>`` element. When you want users to upload files from a form, it's an absolute *must* to set ``enctype`` to ``multipart/form-data``. This attribute and value combination instructs your browser to send form data in a special way back to the server. Essentially, the data representing your file is split into a series of chunks and sent. For more information, check out `this great Stack Overflow answer <http://stackoverflow.com/a/4526286>`_. You should also should remember to include the CSRF token, too. Ensure that you include ``{% csrf_token %}`` within your ``<form>`` element.
 
 The ``register()`` View URL Mapping
@@ -300,7 +300,7 @@ The ``register()`` View URL Mapping
 Now we can add a URL mapping to our new view. In ``rango/urls.py`` modify the ``urlpatterns`` tuple as shown below:
 
 .. code-block:: python
-	
+
 	urlpatterns = patterns('',
 	    url(r'^$', views.index, name='index'),
 	    url(r'^about/$', views.about, name='about'),
@@ -310,14 +310,14 @@ Now we can add a URL mapping to our new view. In ``rango/urls.py`` modify the ``
 	    url(r'^register/$', views.register, name='register'), # ADD NEW PATTERN!
 	    )
 
-The newly added pattern points the URL ``/rango/register/`` to the ``register()`` view. 
+The newly added pattern points the URL ``/rango/register/`` to the ``register()`` view.
 
 Linking Together
 ................
 Finally, we can add a link pointing to that URL in our homepage ``index.html`` template. Underneath the link to the category addition page, add the following hyperlink.
 
 .. code-block:: html
-	
+
 	<a href="/rango/register/">Register Here</a>
 
 Demo
@@ -331,7 +331,7 @@ Easy! Now you'll have a new hyperlink with the text ``Register Here`` that'll ta
 
 	A screenshot illustrating the basic registration form you create as part of this tutorial.
 
-Upon seeing the message indicating your details were successfully registered, the database should have two new entries in its tables corresponding to the ``User`` and ``UserProfile`` models. 
+Upon seeing the message indicating your details were successfully registered, the database should have two new entries in its tables corresponding to the ``User`` and ``UserProfile`` models.
 
 Adding Login Functionality
 --------------------------
@@ -347,20 +347,20 @@ Creating the ``login()`` View
 In ``rango/views.py`` create a new function called ``user_login()`` and add the following code:
 
 .. code-block:: python
-	
+
 	def user_login(request):
-	    
+
 	    # If the request is a HTTP POST, try to pull out the relevant information.
 	    if request.method == 'POST':
 	        # Gather the username and password provided by the user.
 	        # This information is obtained from the login form.
 	        username = request.POST['username']
 	        password = request.POST['password']
-	        
+
 	        # Use Django's machinery to attempt to see if the username/password
 	        # combination is valid - a User object is returned if it is.
 	        user = authenticate(username=username, password=password)
-	        
+
 	        # If we have a User object, the details are correct.
 	        # If None (Python's way of representing the absence of a value), no user
 	        # with matching credentials was found.
@@ -378,7 +378,7 @@ In ``rango/views.py`` create a new function called ``user_login()`` and add the 
 	            # Bad login details were provided. So we can't log the user in.
 	            print "Invalid login details: {0}, {1}".format(username, password)
 	            return HttpResponse("Invalid login details supplied.")
-	    
+
 	    # The request is not a HTTP POST, so display the login form.
 	    # This scenario would most likely be a HTTP GET.
 	    else:
@@ -386,24 +386,24 @@ In ``rango/views.py`` create a new function called ``user_login()`` and add the 
 	        # blank dictionary object...
 	        return render(request, 'rango/login.html', {})
 
-This view may seem rather complicated as it has to handle a variety of situations. Like in previous examples, the ``user_login()`` view handles form rendering and processing. 
+This view may seem rather complicated as it has to handle a variety of situations. Like in previous examples, the ``user_login()`` view handles form rendering and processing.
 
 First, if the view is accessed via the HTTP GET method, then the login form is displayed. However, if the form has been posted via the HTTP POST method, then we can handle processing the form.
 
-If a valid form is sent, the username and password are extracted from the form. These details are then used to attempt to authenticate the user (with Django's ``authenticate()`` function). ``authenticate()`` then returns a ``User`` object if the username/password combination exists within the database - or ``None`` if no match was found. 
+If a valid form is sent, the username and password are extracted from the form. These details are then used to attempt to authenticate the user (with Django's ``authenticate()`` function). ``authenticate()`` then returns a ``User`` object if the username/password combination exists within the database - or ``None`` if no match was found.
 
 If we retrieve a ``User`` object, we can then check if the account is active or inactive - and return the appropriate response to the client's browser.
 
 However, if an invalid form is sent, because the user did not add both a username and password the login form is presented back to the user with form error messages (i.e. username/password is missing).
 
-Of particular interest in the code sample above is the use of the built-in Django machinery to help with the authentication process. Note the use of the ``authenticate()`` function to check whether the username and password provided match to a valid user account, and the ``login()`` function to signify to Django that the user is to be logged in. 
+Of particular interest in the code sample above is the use of the built-in Django machinery to help with the authentication process. Note the use of the ``authenticate()`` function to check whether the username and password provided match to a valid user account, and the ``login()`` function to signify to Django that the user is to be logged in.
 
 You'll also notice that we make use of a new class, ``HttpResponseRedirect``. As the name may suggest to you, the response generated by an instance of the ``HttpResponseRedirect`` class tells the client's browser to redirect to the URL you provide as the argument. Note that this will return a HTTP status code of 302, which denotes a redirect, as opposed to an status code of 200 i.e. OK. See the `official Django documentation  on Redirection <https://docs.djangoproject.com/en/1.7/ref/request-response/#django.http.HttpResponseRedirect>`_, to learn more.
 
 All of these functions and classes are provided by Django, and as such you'll need to import them, so add the following imports to ``rango/views.py``:
 
 .. code-block:: python
-	
+
 	from django.contrib.auth import authenticate, login
 	from django.http import HttpResponseRedirect, HttpResponse
 
@@ -412,7 +412,7 @@ Creating a *Login* Template
 With our new view created, we'll need to create a new template allowing users to login. While we know that the template will live in the ``templates/rango/`` directory, we'll leave you to figure out the name of the file. Look at the code example above to work out the name. In your new template file, add the following code:
 
 .. code-block:: html
-	
+
 	<!DOCTYPE html>
 	<html>
 	    <head>
@@ -443,7 +443,7 @@ Mapping the Login View to a URL
 With your login template created, we can now match up the ``user_login()`` view to a URL. Modify Rango's ``urls.py`` file so that its ``urlpatterns`` tuple now looks like the code below:
 
 .. code-block:: python
-	
+
 	urlpatterns = patterns('',
 	    url(r'^$', views.index, name='index'),
 	    url(r'^about/$', views.about, name='about'),
@@ -459,19 +459,19 @@ Linking Together
 Our final step is to provide users of Rango with a handy link to access the login page. To do this, we'll edit the ``index.html`` template inside of the ``templates/rango/`` directory. Find the previously created category addition and registration links, and add the following hyperlink underneath. You may wish to include a line break (``<br />``) before the link.
 
 .. code-block:: python
-	
+
 	<a href="/rango/login/">Login</a>
 
 If you like, you can also modify the header of the index page to provide a personalised message if a user is logged in, and a more generic message if the user isn't. Within the ``index.html`` template, find the header, as shown in the code snippet below.
 
 .. code-block:: python
-	
+
 	<h1>Rango says..hello world!</h1>
 
 Replace this header with the following markup and Django template code. Note that we make use of the ``user`` object, which is available to Django's template system via the context. We can tell from this object if the user is logged in (authenticated). If he or she is logged in, we can also obtain details about him or her.
 
 .. code-block:: python
-	
+
 	{% if user.is_authenticated %}
 	<h1>Rango says... hello {{ user.username }}!</h1>
 	{% else %}
@@ -503,7 +503,7 @@ Now that users can login to Rango, we can now go about restricting access to par
 The direct approach checks to see whether a user is logged in, via the ``user.is_authenticated()`` method. The ``user`` object is available via the ``request`` object passed into a view. The following example demonstrates this approach.
 
 .. code-block:: python
-	
+
 	def some_view(request):
 	    if not request.user.is_authenticated():
 	        return HttpResponse("You are logged in.")
@@ -519,7 +519,7 @@ Restricting Access with a Decorator
 To try this out,  create a view in Rango's ``views.py`` file, called ``restricted()`` and add the following code:
 
 .. code-block:: python
-	
+
 	@login_required
 	def restricted(request):
 	    return HttpResponse("Since you're logged in, you can see this text!")
@@ -527,13 +527,13 @@ To try this out,  create a view in Rango's ``views.py`` file, called ``restricte
 Note that to use a decorator, you place it *directly above* the function signature, and put a ``@`` before naming the decorator. Python will execute the decorator before executing the code of your function/method. To use the decorator you will have to import it, so also add the following import:
 
 .. code-block:: python
-	
+
 	from django.contrib.auth.decorators import login_required
 
 We'll also add in another pattern to Rango's ``urlpatterns`` tuple in the ``urls.py`` file. Our tuple should then look something like the following example. Note the inclusion of mapping of the ``views.restricted`` view - this is the mapping you need to add.
 
 .. code-block:: python
-	
+
 	urlpatterns = patterns('',
 	    url(r'^$', views.index, name='index'),
 	    url(r'^add_category/$', views.add_category, name='add_category'),
@@ -546,10 +546,10 @@ We'll also add in another pattern to Rango's ``urlpatterns`` tuple in the ``urls
 We'll also need to handle the scenario where a user attempts to access the ``restricted()`` view, but is not logged in. What do we do with the user? The simplest approach is to redirect his or her browser. Django allows us to specify this in our project's ``settings.py`` file, located in the project configuration directory. In ``settings.py``, define the variable ``LOGIN_URL`` with the URL you'd like to redirect users to that aren't logged in, i.e. the login page located at ``/rango/login/``:
 
 .. code-block:: python
-	
+
 	LOGIN_URL = '/rango/login/'
 
-This ensures that the ``login_required()`` decorator will redirect any user not logged in to the URL ``/rango/login/``. 
+This ensures that the ``login_required()`` decorator will redirect any user not logged in to the URL ``/rango/login/``.
 
 Logging Out
 -----------
@@ -558,15 +558,15 @@ To enable users to log out gracefully it would be nice to provide a logout optio
 To provide log out functionality in ``rango/views.py`` add the a view called ``user_logout()`` with the following code:
 
 .. code-block:: python
-	
+
 	from django.contrib.auth import logout
-	
+
 	# Use the login_required() decorator to ensure only those logged in can access the view.
 	@login_required
 	def user_logout(request):
 	    # Since we know the user is logged in, we can now just log them out.
 	    logout(request)
-	    
+
 	    # Take the user back to the homepage.
 	    return HttpResponseRedirect('/rango/')
 
@@ -574,7 +574,7 @@ To provide log out functionality in ``rango/views.py`` add the a view called ``u
 With the view created, map the URL ``/rango/logout/`` to the ``user_logout()`` view by modifying the ``urlpatterns`` tuple in Rango's ``urls.py`` module:
 
 .. code-block:: python
-	
+
 	urlpatterns = patterns('',
 	    url(r'^$', views.index, name='index'),
 	    url(r'^about/$', views.about, name='about'),
@@ -592,7 +592,7 @@ Now that all the machinery for logging a user out has been completed, it'd be ha
 Like in the previous section, we'll be modifying Rango's ``index.html`` template, and making use of the ``user`` object in the template's context to determine what links we want to show. Find your growing list of links at the bottom of the page and replace it with the following HTML markup and Django template code. Note we also add a link to our restricted page at ``/rango/restricted/``.
 
 .. code-block:: html
-	
+
 	{% if user.is_authenticated %}
 	<a href="/rango/restricted/">Restricted Page</a><br />
 	<a href="/rango/logout/">Logout</a><br />
@@ -600,7 +600,7 @@ Like in the previous section, we'll be modifying Rango's ``index.html`` template
 	<a href="/rango/register/">Register Here</a><br />
 	<a href="/rango/login/">Login</a><br />
 	{% endif %}
-	
+
 	<a href="/rango/about/">About</a><br/>
 	<a href="/rango/add_category/">Add a New Category</a><br />
 
@@ -612,7 +612,7 @@ This chapter has covered several important aspects of managing user authenticati
 
 * Customise the application so that only registered users can add/edit, while non-registered can only view/use the categories/pages. You'll also have ensure links to add/edit pages appear only if the user browsing the website is logged in.
 * Provide informative error messages when users incorrectly enter their username or password.
-	
+
 In most applications you are going to require different levels of security when registering and managing users - for example, making sure the user enters an email address that they have access to, or sending users passwords that they have forgotten. While we could extend the current approach and build all the necessary infrastructure to support such functionality a ``django-registration-redux`` application has been developed which greatly simplifies the process - visit https://django-registration-redux.readthedocs.org to find out more about using this package. Templates can be found at: https://github.com/macdhuibh/django-registration-templates
 
 
