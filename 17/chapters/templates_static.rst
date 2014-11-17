@@ -2,59 +2,59 @@
 
 Templates and Static Media
 ==========================
-In this chapter, we'll be extending your knowledge of Django by introducing you to the template engine as well as how to serve *static media* within your web pages. 
+In this chapter, we'll be extending your knowledge of Django by introducing you to the template engine as well as how to serve *static media* within your web pages.
 
 .. _model-setup-templates-label:
 
 Using Templates
 ---------------
-Up to this point, you have plugged a few things together to create a Django-powered webpage. This is coupled a view, which is in turn coupled with a series of URL mappings. Here we will delve into how to combine templates into the mix.
+Up to this point, you have plugged a few things together to create a Django-powered webpage. This is coupled with a view, which is in turn coupled with a series of URL mappings. Here we will delve into how to combine templates into the mix.
 
 Well-designed websites use a lot of repetition in their structure or layout. Whether you see a common header or footer on a website's pages, the `repetition of page layouts <http://www.techrepublic.com/blog/web-designer/effective-design-principles-for-web-designers-repetition/>`_ aids users with navigation, promotes organisation of the website and reinforces a sense of continuity. Django provides `templates  <https://docs.djangoproject.com/en/1.7/ref/templates/>`_ to make it easier for developers to achieve this design goal, as well as separating application logic from presentational concerns. In this chapter, you'll create a basic template which will be used to create a HTML page. This template will then be dispatched via a Django view. In Chapter :ref:`model-using-label`, we will take this a step further by using templates in conjunction with models to dispatch dynamically generated data.
 
 Configuring the Templates Directory
 ...................................
-To get templates up and running, you will need to setup a directory in which template files are stored. 
+To get templates up and running, you will need to setup a directory in which template files are stored.
 
-In your Django project's directory (e.g. ``<workspace>/tango_with_django_project/``), create a new directory called ``templates``. Within the new templates directory, create another directory called ``rango``. So the directory ``<workspace>/tango_with_django_project/templates/rango/`` will be the location in which we will be storing templates associated with our ``rango`` application. 
+In your Django project's directory (e.g. ``<workspace>/tango_with_django_project/``), create a new directory called ``templates``. Within the new templates directory, create another directory called ``rango``. So the directory ``<workspace>/tango_with_django_project/templates/rango/`` will be the location in which we will be storing templates associated with our ``rango`` application.
 
 To tell your Django project where the templates will be housed, open your project's ``settings.py`` file. Find the tuple ``TEMPLATE_DIRS`` and add in the path to your newly created ``templates`` directory, so it looks like the following example.
 
 .. code-block:: python
-	
-	
+
+
 	TEMPLATE_DIRS = ['<workspace>/tango_with_django_project/']
 
 Note that you are *required to use absolute paths* to locate the ``templates`` directory. If you are part of a team or working on different computers, this may become a problem in the future. You'll have different usernames, meaning different paths to your ``<workspace>`` directory. The *hard-coded* path you entered above would not be the same on different computers. Of course, you could add in the template directory for each different setup, but that would be a pretty nasty way to tackle the problem. So, what can we do?
 
 .. warning::
-	The road to hell is paved with hard-coded paths. 
+	The road to hell is paved with hard-coded paths.
  	`Hard-coding <http://en.wikipedia.org/wiki/Hard_coding>`_ paths is considered to be a `software engineering anti-pattern <http://sourcemaking.com/antipatterns>`_, and will make your project less `portable <http://en.wikipedia.org/wiki/Software_portability>`_.
 
 Dynamic Paths
 .............
-The solution to the problem of hard-coding paths is to make use of built-in Python functions to work out the path of our ``templates`` directory automatically for us. This way, an absolute path can be obtained regardless of where you place your Django project's code on your filesystem. This in turn means that your project's code becomes more *portable.* 
+The solution to the problem of hard-coding paths is to make use of built-in Python functions to work out the path of our ``templates`` directory automatically for us. This way, an absolute path can be obtained regardless of where you place your Django project's code on your filesystem. This in turn means that your project's code becomes more *portable.*
 
 In Django 1.7 the ``settings.py`` file, now contains a variable called, ``BASE_DIR``. This stores the path to  the directory in which your project's ``settings.py`` module will be contained. This is obtained by using the special Python ``__file__`` attribute, which is `set to the absolute path of your settings module <http://stackoverflow.com/a/9271479>`_.  The ``__file__`` gives theabsolute path to the settings file, then the call to ``os.path.dirname()`` provides the reference to the absolute path of the directory. Calling ``os.path.dirname()`` again, remvoes another layer, so that ``BASE_DIR`` contains, ``<workspace>/tango_with_django_project/``. You can see this process in action, if you are curious, by adding the following lines:
 
 .. code-block:: python
-	
+
 	print __file__
 	print os.path.dirname(__file__)
 	print os.path.dirname(os.path.dirname(__file__))
-	
+
 
 
 Let's make use of it now. Create a new variable in ``settings.py`` called ``TEMPLATE_PATH`` and store the path to the ``templates`` directory you created earlier. Using the ``os.path.join()`` function, your code should look like the following example.
 
 .. code-block:: python
-	
+
 	TEMPLATE_PATH = os.path.join(BASE_DIR, 'templates')
 
 Here we make use of the ``os.path.join()`` to mash together the ``BASE_DIR`` variable and ``'templates'``, which would for example yield ``<workspace>/tango_with_django_project/templates/``. We can then replace the hard-coded path we put in the ``TEMPLATE_DIRS`` with ``TEMPLATE_PATH``, just like in the example below.
 
 .. code-block:: python
-	
+
 	TEMPLATE_DIRS = [
 	    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
 	    # Always use forward slashes, even on Windows.
@@ -76,20 +76,20 @@ Adding a Template
 With your template directory and path set up, create a file called ``index.html`` and place it in the ``templates/rango/`` directory. Within this new file, add the following HTML code:
 
 .. code-block:: html
-	
+
 	<!DOCTYPE html>
 	<html>
-	
+
 	    <head>
 	        <title>Rango</title>
 	    </head>
-	    
+
 	    <body>
 	        <h1>Rango says...</h1>
 	        hello world! <strong>{{ boldmessage }}</strong><br />
 	        <a href="/rango/about/">About</a><br />
 	    </body>
-	
+
 	</html>
 
 From this HTML code, it should be clear that a simple HTML page is going to be generated that greets a user with a *hello world* message. You might also notice some non-HTML in the form of ``{{ boldmessage }}``. This is a *Django template variable*, and we will be able to set a value for this variable to be displayed within the rendered output. We'll get to that in a moment.
@@ -99,23 +99,23 @@ To use this template, we need to re-configure the ``index()`` view that we creat
 In ``rango/views.py``, make sure the following import statement is at the top of the file.
 
 .. code-block:: python
-	
+
 	from django.template import render
 
 You can then update the ``index()`` view function as follows. Check out the inline commentary to see what each line does.
 
 .. code-block:: python
-	
+
 	def index(request):
-	     
+
 	    # Construct a dictionary to pass to the template engine as its context.
 	    # Note the key boldmessage is the same as {{ boldmessage }} in the template!
 	    context_dict = {'boldmessage': "I am bold font from the context"}
-	    
+
 	    # Return a rendered response to send to the client.
 	    # We make use of the shortcut function to make our lives easier.
 	    # Note that the first parameter is the template we wish to use.
-		
+
 	    return render(request, 'rango/index.html', context_dict)
 
 
@@ -123,7 +123,7 @@ First we construct a dictionary of key-values pairs that we want to use within t
 
 When a template file is loaded with the Django templating system, a *template context* is created. In simple terms, a template context is essentially a Python dictionary that maps template variable names with Python variables. In the template we created earlier, we included a template variable name called ``boldmessage``. In our ``index(request)`` view example, the string ``I am bold font from the context`` is mapped to template variable ``boldmessage``. The string ``I am bold font from the context`` therefore replaces any instance of ``{{ boldmessage }}`` within the template.
 
-Now that you have updated the view to employ the use of your template, run the Django development server and visit http://127.0.0.1:8000/rango/. You should see your template rendered in all its glory, just like the example shown in Figure :num:`fig-rango-hello-world-template`. 
+Now that you have updated the view to employ the use of your template, run the Django development server and visit http://127.0.0.1:8000/rango/. You should see your template rendered in all its glory, just like the example shown in Figure :num:`fig-rango-hello-world-template`.
 
 If you don't, read the error message presented to see what the problem is, and then double check all the changes that you have made. Ensure that all the changes required have been made. One of the most common issues people have with templates is that the path is set incorrectly in ``settings.py``. Sometimes it's worth adding a ``print`` statement to ``settings.py`` to report the ``BASE_DIR`` and ``TEMPLATE_PATH``.
 
@@ -156,11 +156,11 @@ Now place an image within the ``static/images`` directory. As shown in Figure :n
 With our ``static`` directory created, we need to tell Django about it, just like we did with our ``templates`` directory earlier. In ``settings.py`` file, we need to update two variables:  ``STATIC_URL`` and the ``STATICFILES_DIRS`` tuple. First, create a variable to store the path to the static directory (``STATIC_PATH``) as follows.
 
 .. code-block:: python
-	
+
 	STATIC_PATH = os.path.join(BASE_DIR,'static')
 
 	STATIC_URL = '/static/' # You may find this is already defined as such.
-	
+
 	STATICFILES_DIRS = (
 	    STATIC_PATH,
 	)
@@ -182,22 +182,22 @@ To demonstrate how to include static media, open up ``index.html`` located in th
 .. code-block:: html
 
 	<!DOCTYPE html>
-	
+
 	{% load staticfiles %} <!-- New line -->
-	
+
 	<html>
-	
+
 	    <head>
 	        <title>Rango</title>
 	    </head>
-	    
+
 	    <body>
 	        <h1>Rango says...</h1>
 	        hello world! <strong>{{ boldmessage }}</strong><br />
 	        <a href="/rango/about/">About</a><br />
 	        <img src="{% static "images/rango.jpg" %}" alt="Picture of Rango" /> <!-- New line -->
 	    </body>
-	
+
 	</html>
 
 First, we need to inform Django's template system that we will be using static media with the ``{% load static %}`` tag. This allows us to call the ``static`` template tag as done in ``{% static "rango.jpg" %}``. As you can see, Django template tags are denoted by curly brackets ``{ }``. In this example, the ``static`` tag will combine the ``STATIC_URL`` with ``"rango.jpg"`` so that the rendered HTML looks like the following.
@@ -220,24 +220,24 @@ With these minor changes in place, kick off the Django development server once m
 The ``{% static %}`` function call should be used whenever you wish to reference static media within a template. The code example below demonstrates how you could include JavaScript, CSS and images into your templates - all with the correct HTML markup.
 
 .. code-block:: html
-	
+
 	<!DOCTYPE html>
-	
+
 	{% load static %}
-	
+
 	<html>
-	
+
 	    <head>
 	        <title>Rango</title>
 	        <link rel="stylesheet" href="{% static "css/base.css" %}" /> <!-- CSS -->
 	        <script src="{% static "js/jquery.js" %}"></script> <!-- JavaScript -->
 	    </head>
-	    
+
 	    <body>
 	        <h1>Including Static Media</h1>
 	        <img src="{% static "images/rango.jpg" %}" alt="Picture of Rango" /> <!-- Images -->
 	    </body>
-	
+
 	</html>
 
 Static files you reference will obviously need to be present within your ``static`` directory. If the file is not there or you have referenced it incorrectly, the console output provide by Django's lightweight development server will flag up any errors. Try referencing a non-existent file and see what happens.
@@ -272,10 +272,10 @@ Now that you can dispatch static files, let's look at uploading media. Many webs
 So, how do we go about setting up a development media server? The first step is to create another new directory called ``media`` within our Django project's root (e.g. ``<workspace>/tango_with_django_project/``). The new ``media`` directory should now be sitting alongside your ``templates`` and ``static`` directories. After you create the directory, you must then modify your Django project's ``urls.py`` file, located in the project configuration directory (e.g. ``<workspace>/tango_with_django_project/tango_with_django_project/``). Add the following code to the ``urls.py`` file.
 
 .. code-block:: python
-	
+
 	# At the top of your urls.py file, add the following line:
 	from django.conf import settings
-	
+
 	# UNDERNEATH your urlpatterns definition, add the following two lines:
 	if settings.DEBUG:
 	    urlpatterns += patterns(
@@ -292,7 +292,7 @@ With your ``urls.py`` file updated, we now need to modify our project's ``settin
 
 
 .. code-block:: python
-	
+
 	MEDIA_URL = '/media/'
 	MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # Absolute path to the media directory
 
@@ -320,7 +320,7 @@ Creating a template and integrating it within a Django view is a key concept for
 The steps involved for getting a static media file onto one of your pages is another important process you should be familiar with. Check out the steps below on how to do this.
 
 #. Take the static media file you wish to use and place it within your project's ``static`` directory. This is the directory you specify in your project's ``STATICFILES_DIRS`` tuple within ``settings.py``.
-#. Add a reference to the static media file to a template. For example, an image would be inserted into an HTML page through the use of the ``<img />`` tag. 
+#. Add a reference to the static media file to a template. For example, an image would be inserted into an HTML page through the use of the ``<img />`` tag.
 #. Remember to use the ``{% load staticfiles %}`` and ``{% static "filename" %}`` commands within the template to access the static files.
 
 The next chapter will look at databases. We'll see how to make use of Django's excellent database layer to make your life easier and SQL free!
