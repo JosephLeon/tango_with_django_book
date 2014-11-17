@@ -100,7 +100,7 @@ In ``rango/views.py``, make sure the following import statement is at the top of
 
 .. code-block:: python
 
-	from django.template import render
+	from django.shortcuts import render
 
 You can then update the ``index()`` view function as follows. Check out the inline commentary to see what each line does.
 
