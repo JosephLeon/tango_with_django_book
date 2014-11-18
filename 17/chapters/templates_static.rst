@@ -157,7 +157,7 @@ With our ``static`` directory created, we need to tell Django about it, just lik
 
 .. code-block:: python
 
-	STATIC_PATH = os.path.join(BASE_DIR,'static')
+	STATIC_PATH = os.path.join(BASE_DIR, 'static')
 
 	STATIC_URL = '/static/' # You may find this is already defined as such.
 
